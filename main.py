@@ -1,45 +1,4 @@
-class Item:
-    total_item = 0
-    __base_price = 10
-
-    def __init__(self, name: str, price: int):
-        if price <= 0:
-            price = 10
-        self.name = name
-        self.__price = price * Item.__base_price
-        Item.total_item += 1
-
-    def __str__(self):
-        return f"Nama: {self.name}\nHarga: {self.__price}"
-
-    @property
-    def price(self):
-        return self.__price
-
-    @price.setter
-    def price(self, value: int):
-        self.__price = max(0, self.__price + value)
-
-    @classmethod
-    def base_price(cls, value):
-        cls.__base_price = max(0, cls.__base_price + value)
-
-
-class ItemStack:
-    def __init__(self, item: Item, stack: int):
-        self.item = item
-        self.__stack = stack
-
-    def __str__(self):
-        return f"{self.item.__str__()}\nTumpukan: {self.__stack}"
-
-    @property
-    def stack(self):
-        return self.__stack
-
-    @stack.setter
-    def stack(self, value: int):
-        self.__stack = max(0, self.__stack + value)
+from item import Item, ItemStack, Equipment, Consumable
 
 
 class Inventory:
@@ -50,10 +9,11 @@ class Inventory:
         self.list_item = []
 
     def add_item(self, item: ItemStack):
-        if item in self.list_item:
-            pos = self.list_item.index(item)
-            self.list_item[pos].stack += item.stack
-        elif len(self.list_item) < self.__slot:
+        for i in self.list_item:
+            if i.item is item.item:
+                i.stack = item.stack
+                return
+        if len(self.list_item) < self.__slot:
             self.list_item.append(item)
         else:
             print("Maaf, Inventaris Penuh")
@@ -73,6 +33,15 @@ class Character:
         self.name = name
         self.__gold = 0
         self.inventory = Inventory()
+        self.equipped = None
+
+    def equip(self, item: Item):
+        self.equipped = item
+
+    def use_equipped(self):
+        if self.equipped is None:
+            return "Tidak ada item yang dipegang"
+        return self.equipped.use()
 
     @property
     def gold(self):
@@ -92,9 +61,9 @@ if __name__ == "__main__":
     Item.base_price(15)
     print("Class method berhasil dipanggil")
 
-    print("\nUJI OBJEK ")
-    item1 = Item("Cangkul Besi", 2)
-    item2 = Item("Potion Merah", 1)
+    print("\nUJI OBJEK (INHERITANCE)")
+    item1 = Equipment("Cangkul Besi", 2, durability=3)
+    item2 = Consumable("Roti", 1, calorie=50)
 
     stack1 = ItemStack(item1, 1)
     stack2 = ItemStack(item2, 5)
@@ -102,34 +71,66 @@ if __name__ == "__main__":
     player1 = Character("Arthur")
     player2 = Character("Merlin")
 
+    print("\nUJI METHOD OVERRIDING")
+    print(item1.use())
+    print(item2.use())
+    print(f"Durability {item1._name} setelah dipakai: {item1.durability}")
+
     print("\nUJI INSTANCE METHOD ")
-    print("Inventaris Sebelum:\n")
+    print("Inventaris Sebelum:")
     player1.inventory.show_list_item()
 
     player1.inventory.add_item(stack1)
     player1.inventory.add_item(stack2)
-    print("Inventaris Sesudah:")
+    print("\nInventaris Sesudah:")
     player1.inventory.show_list_item()
-    print()
 
-    player1.inventory.add_item(stack2)
-    print("Inventaris Sesudah Ditambah Lagi:")
+    player1.inventory.add_item(ItemStack(item2, 3))
+    print("\nInventaris Sesudah Ditambah Lagi (Roti +3, stack digabung):")
     player1.inventory.show_list_item()
-    print()
+
+    print("\nUJI ASOSIASI")
+    player2.equip(item1)
+    print(f"{player2.name} memegang: {player2.equipped._name}")
+    print(player2.use_equipped())
+    print(Character("Lancelot").use_equipped())
+
+    print("\nUJI AGREGASI (Inventory dihapus, ItemStack tetap ada)")
+    inv_agregasi = Inventory()
+    stack_apel = ItemStack(Consumable("Apel", 1, calorie=30), 4)
+    inv_agregasi.add_item(stack_apel)
+    print("Inventory berisi:")
+    inv_agregasi.show_list_item()
+
+    del inv_agregasi  # hapus inventory
+    print("\nInventory dihapus. ItemStack Apel masih ada:")
+    print(stack_apel)
+
+    print("\nUJI KOMPOSISI (Character dihapus, Inventory ikut hilang)")
+    player3 = Character("Gawain")
+    player3.inventory.add_item(ItemStack(Consumable("Madu", 1, calorie=20), 2))
+    print(f"Inventory milik {player3.name}:")
+    player3.inventory.show_list_item()
+
+    del player3  # hapus Character
+    try:
+        print(player3.inventory)
+    except NameError:
+        print("\nCharacter dihapus, Inventory nya  juga akan ikut hilang ")
 
     print("\nUJI SETTER ")
     player1.gold = 100
     stack1.stack = 5
     print(f"Emas {player1.name} (Valid): {player1.gold}")
-    print(f"Cangkul Besi (Valid): {stack1.stack}")
+    print(f"Tumpukan Cangkul Besi (Valid): {stack1.stack}")
 
     player1.gold = -500
     stack1.stack = -10
     print(f"Emas {player1.name} (Tidak Valid -500): {player1.gold} (Tertahan di 0)")
-    print(f"Tumpukan Pedang (Tidak Valid -10): {stack1.stack} (Tertahan di 0)")
+    print(f"Tumpukan Cangkul Besi (Tidak Valid -10): {stack1.stack} (Tertahan di 0)")
 
     print("\nUJI HAPUS ITEM (INSTANCE METHOD) ")
-    print("Inventaris Sebelum Dihapus:\n")
+    print("Inventaris Sebelum Dihapus:")
     player1.inventory.show_list_item()
 
     player1.inventory.delete_item_from_inventory()
